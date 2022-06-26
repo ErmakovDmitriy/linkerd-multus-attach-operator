@@ -1,0 +1,22 @@
+domain: github.com
+layout:
+- go.kubebuilder.io/v3
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: linkerd-multus-attach-operator
+repo: github.com/ErmakovDmitriy/linkerd-multus-attach-operator
+resources:
+- controller: true
+  domain: github.com
+  kind: Namespace
+  version: v1
+- controller: true
+  domain: github.com
+  kind: Pod
+  path: github.com/ErmakovDmitriy/linkerd-multus-attach-operator/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    webhookVersion: v1
+version: "3"
