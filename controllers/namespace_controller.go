@@ -33,8 +33,6 @@ import (
 
 	k8s "github.com/ErmakovDmitriy/linkerd-multus-attach-operator/k8s"
 	netattachv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
-
-	multusapi "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 )
 
 // NamespaceReconciler reconciles a Namespace object with Multus
@@ -168,7 +166,7 @@ func (r *NamespaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Namespace{}).
 		Watches(
-			&source.Kind{Type: &multusapi.NetworkAttachmentDefinition{}},
+			&source.Kind{Type: &netattachv1.NetworkAttachmentDefinition{}},
 			handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 				return []reconcile.Request{
 					{
