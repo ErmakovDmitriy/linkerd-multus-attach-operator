@@ -34,6 +34,7 @@ import (
 
 	whapiv1 "github.com/ErmakovDmitriy/linkerd-multus-attach-operator/api/v1"
 	"github.com/ErmakovDmitriy/linkerd-multus-attach-operator/controllers"
+	netattachv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -44,6 +45,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(netattachv1.AddToScheme(scheme))
 
 	//+kubebuilder:scaffold:scheme
 }
