@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	k8s "github.com/ErmakovDmitriy/linkerd-multus-attach-operator/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -41,7 +42,7 @@ var podCopyAnnotations = []string{
 var podlog = logf.Log.WithName("pod-resource")
 
 //nolint:lll
-//+kubebuilder:webhook:path=/annotate-multus-v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups=linkerd.io,resources=pods,verbs=create;update,versions=v1,name=multus.linkerd.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/annotate-multus-v1-pod,mutating=true,failurePolicy=ignore,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=multus.linkerd.io,admissionReviewVersions=v1
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;versions=v1
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;versions=v1
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;versions=v1
@@ -155,9 +156,18 @@ func patchPod(pod *corev1.Pod) *corev1.Pod {
 	val, ok := podAnnotations[k8s.MultusNetworkAttachAnnotation]
 	if !ok || val == "" {
 		pod.Annotations[k8s.MultusNetworkAttachAnnotation] = k8s.MultusNetworkAttachmentDefinitionName
-	}
+	} else {
+		// Check that the linkerd-cni is not in the annotation's value yet.
+		nets := strings.Split(val, ",")
 
-	pod.Annotations[k8s.MultusNetworkAttachAnnotation] = val + "," + k8s.MultusNetworkAttachmentDefinitionName
+		for _, n := range nets {
+			if n == k8s.MultusNetworkAttachmentDefinitionName {
+				return pod
+			}
+		}
+
+		pod.Annotations[k8s.MultusNetworkAttachAnnotation] = val + "," + k8s.MultusNetworkAttachmentDefinitionName
+	}
 
 	return pod
 }
