@@ -65,6 +65,28 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	logger.Info("Reconcile event")
 
+	// Load namespace.
+	var ns = &corev1.Namespace{}
+
+	if err := r.Get(ctx, req.NamespacedName, ns); err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info("Namespace was deleted, no action needed")
+
+			return ctrl.Result{}, nil
+		}
+
+		logger.Error(err, "Can not get Namespace")
+
+		return ctrl.Result{}, err
+	}
+
+	// Stop processing for a Namespace which is terminating.
+	if ns.Status.Phase == corev1.NamespaceTerminating {
+		logger.Info("Namespace is Terminating, not action needed")
+
+		return ctrl.Result{}, nil
+	}
+
 	// Check if Multus NetworkAttachmentDefinition must be in the namespace.
 	var isMultusRequired bool
 
@@ -73,20 +95,6 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		isMultusRequired = true
 	} else {
-		var ns = &corev1.Namespace{}
-
-		if err := r.Get(ctx, req.NamespacedName, ns); err != nil {
-			if errors.IsNotFound(err) {
-				logger.Info("Namespace was deleted, no action needed")
-
-				return ctrl.Result{}, nil
-			}
-
-			logger.Error(err, "Can not get Namespace")
-
-			return ctrl.Result{}, err
-		}
-
 		// Check if Multus is requested in the Namespace.
 		isMultusRequired = (ns.Annotations[k8s.MultusAttachAnnotation] == k8s.MultusAttachEnabled)
 	}
