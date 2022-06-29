@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -x
 set -o pipefail
 
@@ -5,8 +7,8 @@ set -o pipefail
 # Multus Pod can not be created due to mounts as below:
 #   Warning  Failed     2m48s                  kubelet            Error: failed to generate container "d40741365de7982e5a57ea12215081e0acb8f0100379c04bc0a64cde2f49a115" spec: failed to generate spec: path "/var/lib/rancher/k3s/data/current/bin" is mounted on "/var/lib/rancher/k3s" but it is not a shared mount
 
-echo "Installing prerequicities"
-apt install docker.io docker curl -y
+echo "Installing prerequisities"
+apt install docker.io docker curl jq -y
 
 echo "Installing k3s"
 curl -sfL https://get.k3s.io | sh -
@@ -22,6 +24,12 @@ kubectl wait --for=condition=Ready node/$(hostname)
 
 echo "Install Helm"
 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+echo "Install kustomize"
+curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+mkdir ~/.kustomize/bin/ -p
+cp kustomize ~/.kustomize/bin/kustomize
+export PATH=$PATH:~/.kustomize/bin/
 
 echo "Downloading Multus CNI"
 # Special thanks to: https://gist.github.com/janeczku/ab5139791f28bfba1e0e03cfc2963ecf
@@ -59,10 +67,3 @@ helm install \
 echo "Install the operator and its webhook"
 make deploy IMG="docker.io/demonihin/linkerd-multus-attach-operator:latest"
 kubectl -n linkerd-multus-attach-operator-system rollout status deployment/linkerd-multus-operator-controller-manager --timeout=120s
-
-
-# kubectl wait --for=condition=Ready Daemonset/linkerd-cni -n linkerd-cni --timeout=60s
-echo "Installing Linkerd"
-linkerd install --linkerd-cni-enabled | kubectl apply --wait -f -
-
- 
