@@ -102,7 +102,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	SetupWebhookWithManager(mgr)
+	SetupWebhookWithManager(mgr, "linkerd")
 
 	//+kubebuilder:scaffold:webhook
 

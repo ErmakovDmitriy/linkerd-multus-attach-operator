@@ -49,8 +49,9 @@ var podlog = logf.Log.WithName("pod-resource")
 
 // PodAnnotator adds Multus annotation to a Pod to attach Linkerd CNI via Multus.
 type PodAnnotator struct {
-	Client  client.Client
-	decoder *admission.Decoder
+	controlPlaneNamespace string
+	Client                client.Client
+	decoder               *admission.Decoder
 }
 
 // Handle implements WebHook handler.
@@ -82,8 +83,8 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	// Annotate Pod with Namespace annotations.
 	pod = copyAnnotations(pod, nsAnnotations)
 
-	// Do nothing, if Linkerd CNI is not requested
-	if !isMultusAnnotationRequested(pod.GetAnnotations()) {
+	// Do nothing, if Linkerd CNI is not requested.
+	if !isMultusAnnotationRequested(pod, req.Namespace, a.controlPlaneNamespace) {
 		podlog.Info("Multus NetworkAttachmentDefinition is not requested, do not patch")
 
 		return admission.Allowed("No Multus attachment requested")
@@ -110,9 +111,16 @@ func (a *PodAnnotator) InjectDecoder(d *admission.Decoder) error {
 }
 
 // SetupWebhookWithManager attaches PodAnnotator to a provided manager.
-func SetupWebhookWithManager(mgr ctrl.Manager) {
-	mgr.GetWebhookServer().Register("/annotate-multus-v1-pod",
-		&webhook.Admission{Handler: &PodAnnotator{Client: mgr.GetClient()}})
+func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace string) {
+	mgr.GetWebhookServer().Register(
+		"/annotate-multus-v1-pod",
+		&webhook.Admission{
+			Handler: &PodAnnotator{
+				Client:                mgr.GetClient(),
+				controlPlaneNamespace: controlPlaneNamespace,
+			},
+		},
+	)
 }
 
 // copyAnnotations copies podCopyAnnotations from a Pod's Namespace to the Pod.
@@ -139,10 +147,26 @@ func copyAnnotations(pod *corev1.Pod, nsAnnotations map[string]string) *corev1.P
 }
 
 // isMultusAnnotationRequested checks if a Pod requires Linkerd CNI via Multus.
-func isMultusAnnotationRequested(podAnnotations map[string]string) bool {
+func isMultusAnnotationRequested(pod *corev1.Pod, reqNamespace, controlPlaneNamespace string) bool {
+	// Injection is explicitly requested.
+	podAnnotations := pod.GetAnnotations()
 	ldInjectVal := podAnnotations[k8s.LinkerdInjectAnnotation]
+
 	if podAnnotations[k8s.MultusAttachAnnotation] == k8s.MultusAttachEnabled &&
 		(ldInjectVal == pkgK8s.ProxyInjectEnabled || ldInjectVal == pkgK8s.ProxyInjectIngress) {
+		return true
+	}
+
+	// Control plane Pods must be always processed by Linkerd CNI.
+	podLabels := pod.GetLabels()
+
+	// Does not have "control-plane" labels.
+	if podLabels == nil {
+		return false
+	}
+
+	if reqNamespace == controlPlaneNamespace &&
+		podLabels[pkgK8s.ControllerComponentLabel] != "" {
 		return true
 	}
 

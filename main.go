@@ -58,6 +58,7 @@ func main() {
 		cniNamespace          string
 		cniKubeconfigFilePath string
 		linkerdNamespace      string
+		webHookPort           int
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -67,7 +68,8 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&cniNamespace, "cni-namespace", "linkerd-cni", "namespace in which Linkerd-CNI is installed")
 	flag.StringVar(&cniKubeconfigFilePath, "cni-kubeconfig", "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig", "Linkerd-CNI Kubeconfig path")
-	flag.StringVar(&linkerdNamespace, "linkerd-namespace", "", "namespace in which Linkerd is installed")
+	flag.StringVar(&linkerdNamespace, "linkerd-namespace", "linkerd", "namespace in which Linkerd is installed")
+	flag.IntVar(&webHookPort, "webhook-port", 9443, "TCP port for webhook to listen on")
 
 	opts := zap.Options{
 		Development: true,
@@ -77,10 +79,19 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	setupLog.Info("Starting controller with parameters",
+		"metrics-bind-addr", metricsAddr,
+		"health-probe-bind-address", probeAddr,
+		"enable-leader-election", enableLeaderElection,
+		"cni-namespace", cniNamespace,
+		"cni-kubeconfig", cniKubeconfigFilePath,
+		"linkerd-namespace", linkerdNamespace,
+		"webhook-port", webHookPort)
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Port:                   webHookPort,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "1a7407a5.multus.linkerd.io",
@@ -101,7 +112,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	whapiv1.SetupWebhookWithManager(mgr)
+	whapiv1.SetupWebhookWithManager(mgr, linkerdNamespace)
 
 	//+kubebuilder:scaffold:builder
 
