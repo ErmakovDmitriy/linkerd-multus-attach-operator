@@ -29,7 +29,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # github.com/linkerd-multus-attach-operator-bundle:$VERSION and github.com/linkerd-multus-attach-operator-catalog:$VERSION.
-IMAGE_TAG_BASE ?= github.com/linkerd-multus-attach-operator
+IMAGE_TAG_BASE ?= docker.io/demonihin/linkerd-multus-attach-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -47,7 +47,7 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 endif
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= docker.io/demonihin/linkerd-multus-attach-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
 
@@ -123,6 +123,11 @@ docker-build: test ## Build docker image with the manager.
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+.PHONY: docker-build-push
+docker-build-push: docker-build docker-push ## Build and push image with the manager.
+	docker tag ${IMG} ${IMAGE_TAG_BASE}:$(shell date +%+4Y%m%d-%H%M)
+	docker push ${IMAGE_TAG_BASE}:$(shell date +%+4Y%m%d-%H%M)
 
 ##@ Deployment
 
