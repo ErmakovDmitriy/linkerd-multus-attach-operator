@@ -127,13 +127,3 @@ echo "Delete namespace Linkerd annotation, check a Pod"
 kubectl annotate --overwrite namespace/$NAMESPACE "linkerd.io/multus-"
 sleep 1
 pod_multus_annotation_must_not_present $(echo $POD_SOURCE | kubectl apply --dry-run=server -o yaml -f -)
-
-
-
-
-
-# # kubectl wait --for=condition=Ready Daemonset/linkerd-cni -n linkerd-cni --timeout=60s
-# echo "Installing Linkerd"
-# linkerd install --linkerd-cni-enabled | kubectl apply --wait -f -
-
- 
