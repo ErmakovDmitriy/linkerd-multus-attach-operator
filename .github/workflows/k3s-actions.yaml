@@ -1,7 +1,7 @@
 name: Build and test
 on: [push]
 jobs:
-  build-test:
+  build-push:
     runs-on: ubuntu-latest
     steps:
       # Clone.
@@ -11,7 +11,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v3
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+      - run: echo "🖥️ The workflow is now ready to build your code on the runner."
       # Build.
       - name: Docker meta
         id: meta
@@ -45,3 +45,31 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+  test-k3s:
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+
+      # - uses: debianmaster/actions-k3s@master
+      #   id: k3s
+      #   with:
+      #     version: ${{ matrix.k8s_version }}
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+
+      - name: Prepare environment
+        run: |
+          set -o pipefail
+          bash tests/01-prepare-github-k3s.sh
+          bash tests/02-annotations-handling.sh
+          bash tests/03-install-linkerd-control-plane.sh
+          bash tests/04-install-linkerd-viz.sh
+          bash tests/05-install-emojivoto.sh
+          
+      
