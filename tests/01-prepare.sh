@@ -61,6 +61,8 @@ linkerd install-cni \
 kubectl -n linkerd-cni rollout status  daemonset/linkerd-cni --timeout=120s
 
 echo "Installing cert-manager for webhook"
+# Can not use helm --atomic or --wait
+# due to a bug https://github.com/cert-manager/cert-manager/issues/1873
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
 helm install \
@@ -69,8 +71,12 @@ helm install \
   --create-namespace \
   --version v1.8.2 \
   --set installCRDs=true \
-  --atomic=true \
   --debug
+
+kubectl -n cert-manager rollout status deployment/cert-manager --timeout=60s
+echo "Wait some time for the cert-manager pods to start"
+sleep 30
+
 
 echo "Install the operator and its webhook"
 make deploy-test IMG="docker.io/demonihin/linkerd-multus-attach-operator:latest"
