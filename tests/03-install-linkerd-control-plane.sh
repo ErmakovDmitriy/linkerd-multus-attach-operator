@@ -10,4 +10,5 @@ linkerd check --pre
 linkerd install --crds | kubectl apply -f -
 linkerd install --linkerd-cni-enabled | kubectl apply --wait -f -
 
- 
+echo "Check linkerd"
+linkerd check

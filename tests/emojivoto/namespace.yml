@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: emojivoto
+  annotations:
+    # linkerd.io/multus: enabled
+    config.linkerd.io/proxy-uid: "12312131"
