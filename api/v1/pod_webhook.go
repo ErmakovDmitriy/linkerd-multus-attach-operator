@@ -42,7 +42,7 @@ var podCopyAnnotations = []string{
 var podlog = logf.Log.WithName("pod-resource")
 
 //nolint:lll
-//+kubebuilder:webhook:path=/annotate-multus-v1-pod,mutating=true,failurePolicy=ignore,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=multus.linkerd.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/annotate-multus-v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=multus.linkerd.io,admissionReviewVersions=v1
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;versions=v1
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;versions=v1
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;versions=v1
