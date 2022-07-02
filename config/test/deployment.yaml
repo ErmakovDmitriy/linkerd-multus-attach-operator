@@ -1,0 +1,4 @@
+# $EXT_DB/deployment.yaml
+- op: add
+  path: "/spec/template/spec/containers/1/args/-"
+  value: "-cni-kubeconfig=/tmp/ZZZ-linkerd-cni-kubeconfig"

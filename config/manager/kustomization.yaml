@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: docker.io/demonihin/linkerd-multus-attach-operator
-  newTag: 20220630-2122
+  newTag: latest
