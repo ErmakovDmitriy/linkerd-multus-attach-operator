@@ -18,7 +18,7 @@ echo "Downloading kubectl"
 curl -L "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
 chmod +x /usr/local/bin/kubectl
 
-alias k="k3s kubectl"
+alias kubectl="k3s kubectl"
 echo "Waiting for k3s to be ready"
 kubectl wait --for=condition=Ready node/$(hostname)
 
@@ -28,8 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |
 echo "Install kustomize"
 curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
 mkdir ~/.kustomize/bin/ -p
-cp kustomize ~/.kustomize/bin/kustomize
-export PATH=$PATH:~/.kustomize/bin/
+cp kustomize /usr/local/bin/kustomize
 
 echo "Downloading Multus CNI"
 # Special thanks to: https://gist.github.com/janeczku/ab5139791f28bfba1e0e03cfc2963ecf
@@ -42,8 +41,8 @@ kubectl -n kube-system rollout status  daemonset/kube-multus-ds --timeout=120s
 
 
 echo "Installing Linkerd CLI"
+export INSTALLROOT=/usr/local/bin/
 curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install | sh
-export PATH=$PATH:/root/.linkerd2/bin
 linkerd version
 
 echo "Check Kubernetes cluster before Linkerd install"
