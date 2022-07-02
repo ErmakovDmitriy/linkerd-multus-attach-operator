@@ -9,7 +9,7 @@ set -o pipefail
 
 echo "Installing prerequisities"
 apt update
-apt install docker.io docker curl jq python3 containerd -y
+apt-get install docker.io docker curl jq python3 containerd runc -y
 
 echo "Installing k3s"
 curl -sfL https://get.k3s.io | sh -
