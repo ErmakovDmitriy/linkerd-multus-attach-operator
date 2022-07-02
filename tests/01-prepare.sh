@@ -70,8 +70,7 @@ helm install \
   --namespace cert-manager \
   --create-namespace \
   --version v1.8.2 \
-  --set installCRDs=true \
-  --debug
+  --set installCRDs=true
 
 kubectl -n cert-manager rollout status deployment/cert-manager --timeout=60s
 echo "Wait some time for the cert-manager pods to start"
