@@ -12,7 +12,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /annotate-multus-v1-pod
-  failurePolicy: Ignore
+  failurePolicy: Fail
   name: multus.linkerd.io
   rules:
   - apiGroups:
