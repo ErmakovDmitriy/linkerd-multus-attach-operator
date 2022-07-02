@@ -69,7 +69,8 @@ helm install \
   --create-namespace \
   --version v1.8.2 \
   --set installCRDs=true \
-  --atomic=true
+  --atomic=true \
+  --debug
 
 echo "Install the operator and its webhook"
 make deploy-test IMG="docker.io/demonihin/linkerd-multus-attach-operator:latest"
