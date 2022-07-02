@@ -11,10 +11,6 @@ echo "Installing prerequisities"
 apt update
 apt install curl jq python3 -y
 
-alias k="k3s kubectl"
-echo "Waiting for k3s to be ready"
-kubectl wait --for=condition=Ready node/$(hostname)
-
 echo "Install Helm"
 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
