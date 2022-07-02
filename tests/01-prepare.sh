@@ -17,7 +17,6 @@ echo "Downloading kubectl"
 curl -L "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
 chmod +x /usr/local/bin/kubectl
 
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 alias k="k3s kubectl"
 echo "Waiting for k3s to be ready"
 kubectl wait --for=condition=Ready node/$(hostname)
