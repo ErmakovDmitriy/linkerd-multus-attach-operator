@@ -65,10 +65,12 @@ jobs:
 
       - name: Prepare environment
         run: |
-          sudo -E bash tests/01-prepare-github-k3s.sh
-          sudo -E bash tests/02-annotations-handling.sh
-          sudo -E bash tests/03-install-linkerd-control-plane.sh
-          sudo -E bash tests/04-install-linkerd-viz.sh
-          sudo -E bash tests/05-install-emojivoto.sh
+          source tests/environment.sh
+
+          sudo -E bash -eo pipefail tests/01-prepare-github-k3s.sh
+          sudo -E bash -eo pipefail tests/02-annotations-handling.sh
+          sudo -E bash -eo pipefail tests/03-install-linkerd-control-plane.sh
+          sudo -E bash -eo pipefail tests/04-install-linkerd-viz.sh
+          sudo -E bash -eo pipefail tests/05-install-emojivoto.sh
           
       

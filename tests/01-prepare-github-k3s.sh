@@ -11,7 +11,6 @@ echo "Installing prerequisities"
 apt update
 apt install curl jq python3 -y
 
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 alias k="k3s kubectl"
 echo "Waiting for k3s to be ready"
 kubectl wait --for=condition=Ready node/$(hostname)
@@ -23,7 +22,6 @@ echo "Install kustomize"
 curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
 mkdir ~/.kustomize/bin/ -p
 cp kustomize ~/.kustomize/bin/kustomize
-export PATH=$PATH:~/.kustomize/bin/
 
 echo "Downloading Multus CNI"
 # Special thanks to: https://gist.github.com/janeczku/ab5139791f28bfba1e0e03cfc2963ecf
@@ -37,7 +35,6 @@ kubectl -n kube-system rollout status  daemonset/kube-multus-ds --timeout=120s
 
 echo "Installing Linkerd CLI"
 curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install | sh
-export PATH=$PATH:/root/.linkerd2/bin
 linkerd version
 
 echo "Check Kubernetes cluster before Linkerd install"
