@@ -8,7 +8,8 @@ set -o pipefail
 #   Warning  Failed     2m48s                  kubelet            Error: failed to generate container "d40741365de7982e5a57ea12215081e0acb8f0100379c04bc0a64cde2f49a115" spec: failed to generate spec: path "/var/lib/rancher/k3s/data/current/bin" is mounted on "/var/lib/rancher/k3s" but it is not a shared mount
 
 echo "Installing prerequisities"
-apt install docker.io docker curl jq python3 -y
+apt update
+apt install docker.io docker curl jq python3 containerd -y
 
 echo "Installing k3s"
 curl -sfL https://get.k3s.io | sh -
