@@ -41,7 +41,7 @@ kubectl -n kube-system rollout status  daemonset/kube-multus-ds --timeout=120s
 
 
 echo "Installing Linkerd CLI"
-export INSTALLROOT=/usr/local/bin/
+export INSTALLROOT=/usr/local/
 curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install | sh
 linkerd version
 
