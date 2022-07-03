@@ -111,5 +111,5 @@ kubectl get pod -A
 sleep 10
 kubectl -n linkerd-multus-attach-operator-system describe pod
 
-# kubectl -n linkerd-multus-attach-operator-system rollout status deployment/linkerd-multus-operator-controller-manager --timeout=120s
-sleep 20 # Time to get lease and load WebHook TLS certificates
+kubectl -n linkerd-multus-attach-operator-system rollout status deployment/linkerd-multus-operator-controller-manager --timeout=120s
+sleep 30 # Time to get lease and load WebHook TLS certificates
