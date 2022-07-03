@@ -47,7 +47,22 @@ jobs:
   #         labels: ${{ steps.meta.outputs.labels }}
   test-k3s:
     # needs: build-push
-    runs-on: ubuntu-latest
+
+    # On ubuntu-latest (20.04) Multus fails to work even not with linkerd-cni injected pods:
+    #
+    #   Warning  FailedCreatePodSandBox  44s   kubelet            Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox "ff09bca66f
+    # 3733c9eb0f176b80bf55a20285c70179c3a96dc2341f816c1ef2a5": plugin type="multus" name="multus-cni-network" failed (add): [linkerd-multus-attach-operator-system/linkerd-multu
+    # s-operator-controller-manager-f9cbd8d69-pkmkr/3a8e6a25-0ac7-459a-8df3-25e596d95263:cbr0]: error adding container to network "cbr0": unsupported CNI result version "1.0.0"
+    #   Warning  FailedCreatePodSandBox  29s   kubelet            Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox "8f755ddf74
+    # 4665c71ab8103dc900ba5d670f96adc5051b1210b90ed0965223c0": plugin type="multus" name="multus-cni-network" failed (add): [linkerd-multus-attach-operator-system/linkerd-multu
+    # s-operator-controller-manager-f9cbd8d69-pkmkr/3a8e6a25-0ac7-459a-8df3-25e596d95263:cbr0]: error adding container to network "cbr0": unsupported CNI result version "1.0.0"
+    #   Warning  FailedCreatePodSandBox  14s   kubelet            Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox "9736b63765
+    # c493901d9adf5eda14337ddf4860a7765b7fc38f021dcf5a737f7c": plugin type="multus" name="multus-cni-network" failed (add): [linkerd-multus-attach-operator-system/linkerd-multu
+    # s-operator-controller-manager-f9cbd8d69-pkmkr/3a8e6a25-0ac7-459a-8df3-25e596d95263:cbr0]: error adding container to network "cbr0": unsupported CNI result version "1.0.0"
+    #   Warning  FailedCreatePodSandBox  1s    kubelet            Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox "801520f269
+    # a6143f9f8dc12d615f5c087be450d0e01db502334e6b08497f81f4": plugin type="multus" name="multus-cni-network" failed (add): [linkerd-multus-attach-operator-system/linkerd-multu
+    # s-operator-controller-manager-f9cbd8d69-pkmkr/3a8e6a25-0ac7-459a-8df3-25e596d95263:cbr0]: error adding container to network "cbr0": unsupported CNI result version "1.0.0"
+    runs-on: ubuntu-18.04
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
