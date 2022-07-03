@@ -22,6 +22,11 @@ alias kubectl="k3s kubectl"
 echo "Waiting for k3s to be ready"
 kubectl wait --for=condition=Ready node/$(hostname)
 
+echo "Install kustomize"
+curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+mkdir ~/.kustomize/bin/ -p
+cp kustomize /usr/local/bin/kustomize
+
 echo "Installing cert-manager for webhook"
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.2/cert-manager.yaml
 kubectl --namespace cert-manager rollout status deployment/cert-manager-cainjector --timeout=60s
@@ -30,11 +35,6 @@ kubectl --namespace cert-manager rollout status deployment/cert-manager-webhook 
 
 echo "Wait some time for the cert-manager pods to start"
 sleep 30
-
-echo "Install kustomize"
-curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
-mkdir ~/.kustomize/bin/ -p
-cp kustomize /usr/local/bin/kustomize
 
 echo "Downloading Multus CNI"
 # Special thanks to: https://gist.github.com/janeczku/ab5139791f28bfba1e0e03cfc2963ecf
