@@ -11,13 +11,15 @@ echo "Installing prerequisities"
 apt update
 apt install curl jq python3 -y
 
-echo "Install Helm"
-curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
 echo "Install kustomize"
 curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
-mkdir ~/.kustomize/bin/ -p
-cp kustomize ~/.kustomize/bin/kustomize
+cp kustomize /usr/local/bin/kustomize
+
+echo "Installing cert-manager for webhook"
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.2/cert-manager.yaml
+kubectl --namespace cert-manager rollout status deployment/cert-manager-cainjector --timeout=60s
+kubectl --namespace cert-manager rollout status deployment/cert-manager --timeout=60s
+kubectl --namespace cert-manager rollout status deployment/cert-manager-webhook --timeout=60s
 
 echo "Downloading Multus CNI"
 # Special thanks to: https://gist.github.com/janeczku/ab5139791f28bfba1e0e03cfc2963ecf
@@ -47,17 +49,6 @@ linkerd install-cni \
   --dest-cni-bin-dir=/var/lib/rancher/k3s/data/current/bin \
   --dest-cni-net-dir=/tmp/ | kubectl apply --wait -f -
 kubectl -n linkerd-cni rollout status  daemonset/linkerd-cni --timeout=120s
-
-echo "Installing cert-manager for webhook"
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-helm install \
-  cert-manager jetstack/cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --version v1.8.2 \
-  --set installCRDs=true \
-  --atomic=true
 
 echo "Install the operator and its webhook"
 make deploy-test IMG="docker.io/demonihin/linkerd-multus-attach-operator:latest"
