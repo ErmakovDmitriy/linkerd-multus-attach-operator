@@ -58,10 +58,17 @@ jobs:
       #   with:
       #     version: 'v1.21.2-k3s1'
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
       - name: Check out repository code
         uses: actions/checkout@v3
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+
+      - name: Sleep forever
+        run: |
+          sleep infinity
 
       - name: Run tests
         run: |
