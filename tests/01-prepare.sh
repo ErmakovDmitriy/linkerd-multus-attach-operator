@@ -9,7 +9,7 @@ set -o pipefail
 
 echo "Installing prerequisities"
 apt update
-apt-get install docker.io docker curl jq python3 containerd runc -y
+apt-get install curl jq python3 -y
 
 echo "Installing k3s"
 curl -sfL https://get.k3s.io | sh -
@@ -32,9 +32,6 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 kubectl --namespace cert-manager rollout status deployment/cert-manager-cainjector --timeout=60s
 kubectl --namespace cert-manager rollout status deployment/cert-manager --timeout=60s
 kubectl --namespace cert-manager rollout status deployment/cert-manager-webhook --timeout=60s
-
-echo "Wait some time for the cert-manager pods to start"
-sleep 30
 
 echo "Downloading Multus CNI"
 # Special thanks to: https://gist.github.com/janeczku/ab5139791f28bfba1e0e03cfc2963ecf
@@ -83,5 +80,5 @@ kubectl get pod -A
 sleep 10
 kubectl -n linkerd-multus-attach-operator-system describe pod
 
-kubectl -n linkerd-multus-attach-operator-system rollout status deployment/linkerd-multus-operator-controller-manager --timeout=120s
+# kubectl -n linkerd-multus-attach-operator-system rollout status deployment/linkerd-multus-operator-controller-manager --timeout=120s
 sleep 20 # Time to get lease and load WebHook TLS certificates
