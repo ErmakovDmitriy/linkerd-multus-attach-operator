@@ -73,10 +73,10 @@ jobs:
 
           #sudo -E bash -eo pipefail tests/01-prepare-github-k3s.sh
           sudo -E bash -eo pipefail tests/01-prepare.sh
-          # sudo -E bash -eo pipefail tests/02-annotations-handling.sh
-          # sudo -E bash -eo pipefail tests/03-install-linkerd-control-plane.sh
-          # sudo -E bash -eo pipefail tests/04-install-linkerd-viz.sh
-          # sudo -E bash -eo pipefail tests/05-install-emojivoto.sh
+          sudo -E bash -eo pipefail tests/02-annotations-handling.sh
+          sudo -E bash -eo pipefail tests/03-install-linkerd-control-plane.sh
+          sudo -E bash -eo pipefail tests/04-install-linkerd-viz.sh
+          sudo -E bash -eo pipefail tests/05-install-emojivoto.sh
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
 
