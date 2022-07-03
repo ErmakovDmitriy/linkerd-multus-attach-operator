@@ -68,5 +68,20 @@ kubectl -n linkerd-cni rollout status  daemonset/linkerd-cni --timeout=120s
 
 echo "Install the operator and its webhook"
 make deploy-test IMG="docker.io/demonihin/linkerd-multus-attach-operator:latest"
+
+kubectl get pod -A
+sleep 10
+kubectl get pod -A
+sleep 10
+kubectl get pod -A
+sleep 10
+kubectl get pod -A
+sleep 10
+kubectl get pod -A
+sleep 10
+kubectl get pod -A
+sleep 10
+kubectl -n linkerd-multus-attach-operator-system describe pod
+
 kubectl -n linkerd-multus-attach-operator-system rollout status deployment/linkerd-multus-operator-controller-manager --timeout=120s
 sleep 20 # Time to get lease and load WebHook TLS certificates
