@@ -69,7 +69,7 @@ if __name__ == '__main__':
             sys.exit(2)
 
         if count['not_meshed_count'] > 0:
-            print('Fail: expect-meshed-only got some meshed edges')
+            print('Fail: expect-meshed-only got not meshed edges')
             sys.exit(1)
         else:
             sys.exit(0)
