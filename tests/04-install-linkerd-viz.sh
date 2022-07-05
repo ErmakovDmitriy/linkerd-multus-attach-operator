@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -x
+set -o pipefail
+
 echo "Creating a namespace for linkerd-viz"
 NAMESPACE="linkerd-viz"
 kubectl create namespace $NAMESPACE

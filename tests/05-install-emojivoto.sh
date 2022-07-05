@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -x
+set -o pipefail
+
 NAMESPACE="emojivoto"
 SEPARATOR="##########"
 

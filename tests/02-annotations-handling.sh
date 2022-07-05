@@ -1,4 +1,4 @@
-#set -x
+set -x
 set -o pipefail
 
 SEPARATOR="##########"
@@ -103,27 +103,42 @@ net_attach_must_present $NAMESPACE
 echo "$SEPARATOR"
 echo "Annotate namespace with Linkerd Inject"
 kubectl annotate --overwrite namespace/$NAMESPACE "linkerd.io/inject=enabled"
+sleep 1
 
 POD_SOURCE=$(cat <<EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: test-pod
-  namespace: $NAMESPACE
-spec:
-  containers:
-    - name: test
-      image: busybox
-      command: ["sleep", "3600"]
+{
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+        "name": "test-pod",
+        "namespace": "$NAMESPACE"
+    },
+    "spec": {
+        "containers": [
+            {
+                "command": [
+                    "sleep",
+                    "3600"
+                ],
+                "image": "busybox",
+                "name": "test"
+            }
+        ]
+    }
+}
 EOF
 )
 
+echo "Pod definition"
+echo $POD_SOURCE
+
 echo "$SEPARATOR"
-echo "Check a Pod"
+echo "Check a Pod, expected to have the Multus annotation on the Pod"
 pod_multus_annotation_must_present $(echo $POD_SOURCE | kubectl apply --dry-run=server -o yaml -f -)
 
 echo "$SEPARATOR"
 echo "Delete namespace Linkerd annotation, check a Pod"
 kubectl annotate --overwrite namespace/$NAMESPACE "linkerd.io/multus-"
 sleep 1
+echo "Check a Pod, expected not to have the Multus annotation on the Pod"
 pod_multus_annotation_must_not_present $(echo $POD_SOURCE | kubectl apply --dry-run=server -o yaml -f -)

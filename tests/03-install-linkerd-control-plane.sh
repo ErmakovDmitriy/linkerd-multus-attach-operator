@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -x
 set -o pipefail
 
 kubectl -n linkerd-multus-attach-operator-system rollout status deployment linkerd-multus-operator-controller-manager --timeout=10s
