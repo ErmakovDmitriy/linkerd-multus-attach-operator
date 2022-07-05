@@ -120,7 +120,7 @@ echo "Delete the namespace's Linkerd annotation, check a Pod"
 kubectl annotate --overwrite namespace/$NAMESPACE "linkerd.io/multus-"
 sleep 1
 echo "Check a Pod, expected not to have the Multus annotation on the Pod"
-__POD_WITHOUT_EXPECTED_ANNOTATIONS=$(echo $POD_SOURCE | kubectl apply --dry-run=server -o yaml -f -)
+__POD_WITHOUT_EXPECTED_ANNOTATIONS=$(echo $POD_SOURCE | kubectl apply --dry-run=server -o json -f -)
 echo "Pod without expected annotations definition:"
 echo "$__POD_WITHOUT_EXPECTED_ANNOTATIONS" | jq
 echo $__POD_WITHOUT_EXPECTED_ANNOTATIONS | python tests/check_annotations.py must-not-contain
