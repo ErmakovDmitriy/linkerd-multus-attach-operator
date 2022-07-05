@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+# set -x
 set -o pipefail
 
 # Used Debian 11 and k3s as k3d has issues with Multus daemon set.

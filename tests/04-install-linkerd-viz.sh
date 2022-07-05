@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+# set -x
 set -o pipefail
 
 echo "Creating a namespace for linkerd-viz"
