@@ -23,7 +23,7 @@ def count_edges(fio):
 
     for edge in edges:
         if (edge['src_namespace'] in CONTROL_PLANE_NAMESPACES or
-                edge['src'].contains(LINKERD_PROMETHEUS)):
+                edge['src'].find(LINKERD_PROMETHEUS)) != -1:
             not_meshed_count += 1
         else:
             meshed_count += 1
