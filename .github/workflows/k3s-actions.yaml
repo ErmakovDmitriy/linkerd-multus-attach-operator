@@ -47,7 +47,7 @@ jobs:
   #         labels: ${{ steps.meta.outputs.labels }}
 
   test-k3s:
-    needs: build-push
+    # needs: build-push
 
     runs-on: ubuntu-latest
     steps:
