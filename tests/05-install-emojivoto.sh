@@ -33,7 +33,7 @@ sleep 30
 echo "There should not be any linkerd edges between pods in the namespace"
 EDGES=$(linkerd viz edges deployment --namespace emojivoto -o json)
 echo "Edges report:"
-echo $EDGES
+echo $EDGES | jq
 echo $EDGES | python tests/count_edges.py expect-not-meshed-only
 
 
@@ -63,7 +63,7 @@ sleep 30
 echo "There should be 3 linkerd edges between pods in the namespace $NAMESPACE"
 EDGES=$(linkerd viz edges deployment --namespace emojivoto -o json)
 echo "Edges report:"
-echo $EDGES
+echo $EDGES | jq
 echo $EDGES | python tests/count_edges.py expect-meshed
 
 
