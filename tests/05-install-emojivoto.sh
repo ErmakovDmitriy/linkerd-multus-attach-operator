@@ -64,7 +64,7 @@ echo "There should be 3 linkerd edges between pods in the namespace $NAMESPACE"
 EDGES=$(linkerd viz edges deployment --namespace emojivoto -o json)
 echo "Edges report:"
 echo $EDGES
-echo $EDGES | python tests/count_edges.py expect-meshed-only
+echo $EDGES | python tests/count_edges.py expect-meshed
 
 
 echo $SEPARATOR
