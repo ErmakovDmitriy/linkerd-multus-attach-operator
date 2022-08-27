@@ -1,0 +1,47 @@
+{{- $altNames := list ( printf "%s.%s" (include "multus-attacher.fullname" .) .Release.Namespace ) ( printf "%s.%s.svc" (include "multus-attacher.fullname" .) .Release.Namespace ) -}}
+{{- $ca := genCA "multus-attacher" 3650 -}}
+{{- $cert := genSignedCert ( include "multus-attacher.name" . ) nil $altNames 3650 $ca -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: {{ include "multus-attacher.fullname" . }}
+type: kubernetes.io/tls
+data:
+    tls.crt: {{ $cert.Cert | b64enc }}
+    tls.key: {{ $cert.Key | b64enc }}
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "multus-attacher.fullname" . }}
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "multus-attacher.fullname" . }}
+      namespace: "{{ .Release.Namespace }}"
+      path: /annotate-multus-v1-pod
+      port: {{ .Values.service.webhookPort }}
+    caBundle: {{ $ca.Cert | b64enc }}
+  failurePolicy: {{ .Values.webhook.failurePolicy }}
+  name: multus.linkerd.io
+  # We do not need to handle the controller's namespace with its webhook.
+  namespaceSelector:
+    matchExpressions:
+      - key: "kubernetes.io/metadata.name"
+        operator: NotIn
+        values: ["{{ .Release.Namespace }}"]
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - pods
+  sideEffects: None

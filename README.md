@@ -46,8 +46,57 @@ The webhook adds the `k8s.cni.cncf.io/v1=linkerd-cni` annotation if any of items
 * A Pod has `linkerd.io/multus=enabled` annotation
 * A Pod is in Linkerd control plane namespace and has not empty `linkerd.io/control-plane-component` label
 
+## Getting Started Helm and Linkerd-cli way
 
-## Getting Started
+### Install Linkerd
+
+0. Configure Openshift SCCs for Linkerd-CNI (necessary only for Openshift clusters):
+
+```sh
+# For Linkerd control plane. Maybe these privileges can be further reduced.
+oc adm policy add-scc-to-user privileged -z linkerd-destination -n linkerd
+oc adm policy add-scc-to-user privileged -z linkerd-proxy-injector -n linkerd
+oc adm policy add-scc-to-user privileged -z linkerd-identity -n linkerd
+#
+# For Linkerd CNI must have root privileges to manipulate with netfilter.
+oc adm policy add-scc-to-user privileged -z linkerd-cni -n linkerd-cni
+#
+# For Linkerd VIZ - do not add, if you are not planning to use the viz extension.
+oc adm policy add-scc-to-user anyuid -z default -n linkerd-viz
+oc adm policy add-scc-to-user anyuid -z metrics-api -n linkerd-viz
+oc adm policy add-scc-to-user anyuid -z prometheus -n linkerd-viz
+oc adm policy add-scc-to-user anyuid -z tap -n linkerd-viz
+oc adm policy add-scc-to-user anyuid -z tap-injector -n linkerd-viz
+oc adm policy add-scc-to-user anyuid -z web -n linkerd-viz
+```
+
+1. Install Linkerd-CNI with Helm values (file paths are given for Openshift 4.10):
+
+```yaml
+destCNIBinDir: /var/lib/cni/bin
+destCNINetDir: /etc/cni/net.d
+```
+
+It can be done via `linkerd-cli` as: `linkerd install-cni --dest-cni-bin-dir=/var/lib/cni/bin --dest-cni-net-dir=/etc/cni/net.d | kubectl apply -f -`.
+
+2. Install Linkerd CRDs: `linkerd install --crds | kubectl apply -f -`
+
+3. Install Linkerd: `linkerd install --linkerd-cni-enabled | kubectl apply -f -`
+
+4. Install the controller:
+
+```sh
+# Never install the controller in the same namespace as Linkerd and Linkerd-CNI
+# as at least WebHook will ignore the controller's namespace which may cause unexpected behaviour.
+kubectl create ns linkerd-multus-controller
+helm install ld-controller ./helm/
+```
+
+5. Delete Linkerd control plane Pods: `kubectl -n linkerd delete pod --all` to recreate them with the Multus attached Linkerd-CNI plugin.
+
+6. Install Linkerd-viz, if necessary (don't forget to annotate the namespace with `linkerd.io/multus: enabled`).
+
+## Getting Started with Kustomize and Make
 
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
