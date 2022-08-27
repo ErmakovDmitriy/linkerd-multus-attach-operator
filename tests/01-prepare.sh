@@ -98,7 +98,6 @@ linkerd check --pre
 # "-cni-kubeconfig=/tmp/ZZZ-linkerd-cni-kubeconfig"
 echo "Installind Linkerd CNI"
 linkerd install-cni \
-  --cni-image=docker.io/demonihin/linkerd2-cni \
   --linkerd-version=latest \
   --dest-cni-bin-dir=/var/lib/rancher/k3s/data/current/bin \
   --dest-cni-net-dir=/tmp/ | kubectl apply --wait -f -
