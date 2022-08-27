@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 	"os"
-	"strconv"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -82,11 +82,7 @@ func main() {
 
 	// I am not sure that this is a good way but it is better than preserve the quotes and pass them futher.
 	// The quotes being then embedded in the Linkerd-CNI configuration cause its failure so they must be removed.
-	cniKubeconfigFilePath, err := strconv.Unquote(rawCNIKubeconfigFilePath)
-	if err != nil {
-		setupLog.Error(err, "Can not unquote path", "path", rawCNIKubeconfigFilePath)
-		os.Exit(1)
-	}
+	cniKubeconfigFilePath := strings.Trim(rawCNIKubeconfigFilePath, `\"`)
 
 	setupLog.Info("Starting controller with parameters",
 		"metrics-bind-addr", metricsAddr,
