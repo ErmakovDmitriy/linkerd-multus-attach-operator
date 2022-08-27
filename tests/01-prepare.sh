@@ -98,7 +98,6 @@ linkerd check --pre
 # "-cni-kubeconfig=/tmp/ZZZ-linkerd-cni-kubeconfig"
 echo "Installind Linkerd CNI"
 linkerd install-cni \
-  --linkerd-version=latest \
   --dest-cni-bin-dir=/var/lib/rancher/k3s/data/current/bin \
   --dest-cni-net-dir=/tmp/ | kubectl apply --wait -f -
 kubectl -n linkerd-cni rollout status  daemonset/linkerd-cni --timeout=120s
