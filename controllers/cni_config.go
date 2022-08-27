@@ -63,7 +63,7 @@ func loadCNINetworkConfig(cm *corev1.ConfigMap, cniKubeconfigPath string) (*CNIP
 	var pc = newCNIPluginConf()
 
 	if err := json.Unmarshal([]byte(cniConfigRAW), pc); err != nil {
-		return nil, fmt.Errorf("can not load CNI Config: %w", err)
+		return nil, fmt.Errorf("can not JSON Unmarshal CNI Config: %w", err)
 	}
 
 	// Patch Kubeconfig path as it is not set in the Linkerd CNI ConfigMap (placeholder).
@@ -76,7 +76,8 @@ func getCNINetworkConfig(ctx context.Context, client client.Client, linkerdCNINa
 	var cm = &corev1.ConfigMap{}
 
 	if err := client.Get(ctx, apitypes.NamespacedName{Namespace: linkerdCNINamespace, Name: k8s.LinkerdCNIConfigMapName}, cm); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not get Linkerd-CNI ConfigMap %s/%s: %w",
+			linkerdCNINamespace, k8s.LinkerdCNIConfigMapName, err)
 	}
 
 	return loadCNINetworkConfig(cm, cniKubeconfigPath)

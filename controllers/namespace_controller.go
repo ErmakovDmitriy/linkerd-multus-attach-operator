@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -75,9 +76,9 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 
-		logger.Error(err, "Can not get Namespace")
+		logger.Error(err, "can not get Namespace")
 
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("can not get Namespace: %w", err)
 	}
 
 	// Stop processing for a Namespace which is terminating.
@@ -116,7 +117,7 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if !errors.IsNotFound(err) {
 			logger.Error(err, "Can not get Multus NetworkAttachmentDefinition")
 
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("can not get Multus NetworkAttachmentDefinition: %w", err)
 		}
 
 		// Here we have a state "NetworkAttachmentDefinition is not found in the namespace".

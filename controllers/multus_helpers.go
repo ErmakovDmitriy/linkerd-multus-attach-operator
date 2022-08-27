@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	k8s "github.com/ErmakovDmitriy/linkerd-multus-attach-operator/k8s"
 	"github.com/go-logr/logr"
@@ -28,7 +29,7 @@ func newMultusNetworkAttachDefinition(multusRef client.ObjectKey,
 
 	cfg, err := json.Marshal(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NetworkAttachmentDefinition configuration JSON Marshal error: %w", err)
 	}
 
 	multusNetAttach.Spec.Config = string(cfg)
@@ -62,7 +63,12 @@ func createMultusNetAttach(ctx context.Context, k8s client.Client,
 		return err
 	}
 
-	return k8s.Create(ctx, netAttach)
+	if err := k8s.Create(ctx, netAttach); err != nil {
+		return fmt.Errorf("can not create Multus NetworkAttachmentDefinition %s/%s: %w",
+			netAttach.ObjectMeta.Namespace, netAttach.ObjectMeta.Name, err)
+	}
+
+	return nil
 }
 
 func updateMultusNetAttach(ctx context.Context, k8s client.Client, logger logr.Logger,
@@ -89,5 +95,10 @@ func updateMultusNetAttach(ctx context.Context, k8s client.Client, logger logr.L
 
 	currentMultus.Spec = requiredMultus.Spec
 
-	return k8s.Update(ctx, currentMultus)
+	if err := k8s.Update(ctx, currentMultus); err != nil {
+		return fmt.Errorf("can not update Multus NetworkAttachmentDefinition %s/%s: %w",
+			currentMultus.ObjectMeta.Namespace, currentMultus.ObjectMeta.Name, err)
+	}
+
+	return nil
 }
