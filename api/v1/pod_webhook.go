@@ -33,13 +33,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+const debugLogLevel = 1
+
 var podCopyAnnotations = []string{
 	k8s.MultusAttachAnnotation,
 	k8s.LinkerdInjectAnnotation,
 }
-
-// log is for logging in this package.
-var podlog = logf.Log.WithName("pod-resource")
 
 //nolint:lll
 //+kubebuilder:webhook:path=/annotate-multus-v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=multus.linkerd.io,admissionReviewVersions=v1
@@ -58,6 +57,9 @@ type PodAnnotator struct {
 // Checks if a Pod or its Namespace have "linkerd.io/multus" annotation and then
 // appends to "k8s.v1.cni.cncf.io/networks" annotations the linkerd-cni network.
 func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admission.Response {
+	// log is for logging in this function.
+	var podlog = logf.FromContext(ctx).WithName("pod-webhook")
+
 	pod := &corev1.Pod{}
 	err := a.decoder.Decode(req, pod)
 	if err != nil {
@@ -67,7 +69,7 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	}
 
 	podlog = podlog.WithValues("req_namespace", req.Namespace, "pod_generate_name", pod.GenerateName)
-	podlog.Info("Received request")
+	podlog.V(debugLogLevel).Info("Received request")
 
 	// Retrieve namespace annotations.
 	var namespace = &corev1.Namespace{}
@@ -85,7 +87,7 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 
 	// Do nothing, if Linkerd CNI is not requested.
 	if !isMultusAnnotationRequested(pod, req.Namespace, a.controlPlaneNamespace) {
-		podlog.Info("Multus NetworkAttachmentDefinition is not requested, do not patch")
+		podlog.V(debugLogLevel).Info("Multus NetworkAttachmentDefinition is not requested, do not patch")
 
 		return admission.Allowed("No Multus attachment requested")
 	}
@@ -93,7 +95,7 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	// Mutate the fields in pod.
 	pod = patchPod(pod)
 
-	podlog.Info("Patches Pod annotations",
+	podlog.V(debugLogLevel).Info("Patches Pod annotations",
 		k8s.MultusNetworkAttachAnnotation, pod.GetAnnotations()[k8s.MultusNetworkAttachAnnotation])
 
 	marshaledPod, err := json.Marshal(pod)

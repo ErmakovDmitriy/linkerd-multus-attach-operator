@@ -70,3 +70,5 @@ controller:
   cniNamespace: "linkerd-cni"
   cniKubeconfigNodePath: "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig"
   linkerdControlPlaneNamespace: "linkerd"
+
+  logLevel: info

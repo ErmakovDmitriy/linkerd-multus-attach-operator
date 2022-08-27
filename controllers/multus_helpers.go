@@ -88,7 +88,7 @@ func updateMultusNetAttach(ctx context.Context, k8s client.Client, logger logr.L
 	}
 
 	if currentMultus.Spec == requiredMultus.Spec {
-		logger.Info("Current and required states are equal, nothing to update")
+		logger.V(debugLogLevel).Info("Current and required states are equal, nothing to update")
 
 		return nil
 	}
