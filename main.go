@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -52,13 +53,13 @@ func init() {
 
 func main() {
 	var (
-		metricsAddr           string
-		enableLeaderElection  bool
-		probeAddr             string
-		cniNamespace          string
-		cniKubeconfigFilePath string
-		linkerdNamespace      string
-		webHookPort           int
+		metricsAddr              string
+		enableLeaderElection     bool
+		probeAddr                string
+		cniNamespace             string
+		rawCNIKubeconfigFilePath string
+		linkerdNamespace         string
+		webHookPort              int
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -67,7 +68,7 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&cniNamespace, "cni-namespace", "linkerd-cni", "namespace in which Linkerd-CNI is installed")
-	flag.StringVar(&cniKubeconfigFilePath, "cni-kubeconfig", "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig", "Linkerd-CNI Kubeconfig path")
+	flag.StringVar(&rawCNIKubeconfigFilePath, "cni-kubeconfig", "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig", "Linkerd-CNI Kubeconfig path")
 	flag.StringVar(&linkerdNamespace, "linkerd-namespace", "linkerd", "namespace in which Linkerd is installed")
 	flag.IntVar(&webHookPort, "webhook-port", 9443, "TCP port for webhook to listen on")
 
@@ -78,6 +79,14 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	// I am not sure that this is a good way but it is better than preserve the quotes and pass them futher.
+	// The quotes being then embedded in the Linkerd-CNI configuration cause its failure so they must be removed.
+	cniKubeconfigFilePath, err := strconv.Unquote(rawCNIKubeconfigFilePath)
+	if err != nil {
+		setupLog.Error(err, "Can not unquote path", "path", rawCNIKubeconfigFilePath)
+		os.Exit(1)
+	}
 
 	setupLog.Info("Starting controller with parameters",
 		"metrics-bind-addr", metricsAddr,
