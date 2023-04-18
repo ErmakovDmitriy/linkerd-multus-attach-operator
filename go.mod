@@ -7,9 +7,9 @@ require (
 	github.com/linkerd/linkerd2 v0.5.1-0.20220531150141-80af1f8c9e2c
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.6
-	k8s.io/api v0.27.1
-	k8s.io/apimachinery v0.27.1
-	k8s.io/client-go v0.27.1
+	k8s.io/api v0.26.1
+	k8s.io/apimachinery v0.26.1
+	k8s.io/client-go v0.26.1
 	sigs.k8s.io/controller-runtime v0.14.6
 )
 
