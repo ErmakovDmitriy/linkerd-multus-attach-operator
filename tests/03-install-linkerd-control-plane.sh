@@ -7,7 +7,6 @@ kubectl -n linkerd-multus-attach-operator-system rollout status deployment linke
 kubectl -n linkerd-cni rollout status daemonset linkerd-cni --timeout=10s
 
 echo "Installing Linkerd"
-linkerd check --pre 
 linkerd install --crds | kubectl apply -f -
 linkerd install --linkerd-cni-enabled | kubectl apply --wait -f -
 

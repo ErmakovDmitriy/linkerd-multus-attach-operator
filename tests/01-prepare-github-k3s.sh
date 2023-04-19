@@ -42,6 +42,7 @@ kubectl -n kube-system rollout status  daemonset/kube-multus-ds --timeout=120s
 echo "Installing Linkerd CLI"
 curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install | sh
 linkerd version
+linkerd check --pre
 
 # Use /tmp/ for linkerd-cni configuration so as to 
 # prevent kubelet from handling linked cni via its configuration file.
