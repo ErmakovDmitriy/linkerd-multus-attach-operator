@@ -33,7 +33,10 @@ webhooks:
     matchExpressions:
       - key: "kubernetes.io/metadata.name"
         operator: NotIn
-        values: ["{{ .Release.Namespace }}"]
+        values:
+          {{- range $ns := .Values.webhook.excludeNamespaces }}
+          - {{ tpl $ns $ | quote }} 
+          {{- end }}
   rules:
   - apiGroups:
     - ""
