@@ -47,8 +47,11 @@ The webhook adds the `k8s.cni.cncf.io/v1=linkerd-cni` annotation if any of items
 * A Pod is in Linkerd control plane namespace and has not empty `linkerd.io/control-plane-component` label
 
 If the controller is used on Openshift or other Kubernetes cluster which enforces user and group ID ranges
-in namespaces, you should also annotate Pods with ` config.linkerd.io/proxy-uid` annotation and an allowed UID value.
+in namespaces, you should also annotate Pods with `config.linkerd.io/proxy-uid` annotation and an allowed UID value.
 Otherwise, Openshift will not allow the proxy container to start.
+If a Pod's namespace has `openshift.io/sa.scc.uid-range={{ first ID }}/{{ pool size }}`
+annotation, then the webhook will try to use it to annotate the Pod with the `config.linkerd.io/proxy-uid={{ first ID }}`
+annotation.
 
 ## Getting Started Helm and Linkerd-cli way
 

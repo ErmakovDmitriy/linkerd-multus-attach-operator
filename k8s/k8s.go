@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	MultusAttachAnnotation  = pkgK8s.Prefix + "/multus"
-	LinkerdInjectAnnotation = pkgK8s.ProxyInjectAnnotation
+	MultusAttachAnnotation    = pkgK8s.Prefix + "/multus"
+	LinkerdInjectAnnotation   = pkgK8s.ProxyInjectAnnotation
+	LinkerdProxyUIDAnnotation = pkgK8s.ProxyUIDAnnotation
 
 	// MultusNetworkAttachmentDefinitionName is the name of a NetworkAttachmentDefinition
 	// created in a namespace if MultusAttachAnnotation is enabled.
@@ -43,4 +44,6 @@ const (
 	// MultusNetworkAttachAnnotation is annotation which triggers Multus to
 	// run CNI plugins.
 	MultusNetworkAttachAnnotation = "k8s.v1.cni.cncf.io/networks"
+
+	OpenshiftNamespaceAllowedUIDsAnnotation = "openshift.io/sa.scc.uid-range"
 )
