@@ -30,13 +30,11 @@ webhooks:
   name: multus.linkerd.io
   # We do not need to handle the controller's namespace with its webhook.
   namespaceSelector:
-    matchExpressions:
-      - key: "kubernetes.io/metadata.name"
-        operator: NotIn
-        values:
-          {{- range $ns := .Values.webhook.excludeNamespaces }}
-          - {{ tpl $ns $ | quote }} 
-          {{- end }}
+    {{- .Values.webhook.namespaceSelector | toYaml | nindent 4 }}
+  {{- with .Values.webhook.objectSelector }}
+  objectSelector:
+    {{- . | toYaml | nindent 4 }}
+  {{- end }}
   rules:
   - apiGroups:
     - ""

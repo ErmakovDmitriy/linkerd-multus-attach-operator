@@ -73,12 +73,18 @@ webhook:
   # If you use Openshift, then the list of the namespaces must include
   # Openshift-specific namespaces.
   # The values are processed as Helm template.
-  excludeNamespaces:
-    - "kube-system"
-    - "kube-public"
-    - "kube-node-lease"
-    - "{{ .Release.Namespace }}"
-
+  # We do not need to handle the controller's namespace with its webhook.
+  namespaceSelector:
+    matchExpressions:
+      - key: "kubernetes.io/metadata.name"
+        operator: NotIn
+        values:
+          - "kube-system"
+          - "kube-public"
+          - "kube-node-lease"
+          - "{{ .Release.Namespace }}"
+  # Filter Pods to handle with the webhook.
+  objectSelector: {}
 controller:
   leaderElection: true
   cniNamespace: "linkerd-cni"
