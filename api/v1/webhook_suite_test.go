@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ErmakovDmitriy/linkerd-multus-attach-operator/k8s"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
@@ -104,7 +105,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	SetupWebhookWithManager(mgr, "linkerd")
+	SetupWebhookWithManager(mgr, "linkerd", k8s.NamespaceAllowedUIDRangeAnnotationDefault, k8s.LinkerdProxyUIDDefaultOffset)
 
 	//+kubebuilder:scaffold:webhook
 

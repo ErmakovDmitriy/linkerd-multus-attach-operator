@@ -35,6 +35,7 @@ import (
 
 	whapiv1 "github.com/ErmakovDmitriy/linkerd-multus-attach-operator/api/v1"
 	"github.com/ErmakovDmitriy/linkerd-multus-attach-operator/controllers"
+	"github.com/ErmakovDmitriy/linkerd-multus-attach-operator/k8s"
 	netattachv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	//+kubebuilder:scaffold:imports
 )
@@ -60,17 +61,22 @@ func main() {
 		rawCNIKubeconfigFilePath string
 		linkerdNamespace         string
 		webHookPort              int
+
+		allowedUIDAnnotationName string
+		linkerdProxyUIDOffset    int
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&cniNamespace, "cni-namespace", "linkerd-cni", "namespace in which Linkerd-CNI is installed")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", true,
+		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&cniNamespace, "cni-namespace", "linkerd-cni", "Namespace name in which Linkerd-CNI is installed")
 	flag.StringVar(&rawCNIKubeconfigFilePath, "cni-kubeconfig", "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig", "Linkerd-CNI Kubeconfig path")
-	flag.StringVar(&linkerdNamespace, "linkerd-namespace", "linkerd", "namespace in which Linkerd is installed")
+	flag.StringVar(&linkerdNamespace, "linkerd-namespace", "linkerd", "Namespace name in which Linkerd is installed")
 	flag.IntVar(&webHookPort, "webhook-port", 9443, "TCP port for webhook to listen on")
+	flag.StringVar(&allowedUIDAnnotationName, "namespace-uid-range-annotation",
+		k8s.NamespaceAllowedUIDRangeAnnotationDefault, "Namespace annotation name which should contain allowed container UID range in {{ first UID }}/{{ length }} format")
+	flag.IntVar(&linkerdProxyUIDOffset, "linkerd-proxy-uid-offset", k8s.LinkerdProxyUIDDefaultOffset, "Offset to add to the first allowed UID in a namespace to generate Linkerd proxy UID")
 
 	opts := zap.Options{
 		Development: true,
@@ -117,7 +123,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	whapiv1.SetupWebhookWithManager(mgr, linkerdNamespace)
+	whapiv1.SetupWebhookWithManager(mgr, linkerdNamespace, allowedUIDAnnotationName, linkerdProxyUIDOffset)
 
 	//+kubebuilder:scaffold:builder
 

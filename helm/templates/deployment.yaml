@@ -36,14 +36,16 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           args:
-            - '--metrics-bind-address=:8080'
-            - '--health-probe-bind-address=:8081'
-            - '--webhook-port=9443'
-            - '--leader-elect={{ .Values.controller.leaderElection }}'
-            - '--cni-namespace={{ .Values.controller.cniNamespace }}'
-            - '--cni-kubeconfig={{ .Values.controller.cniKubeconfigNodePath }}'
-            - '--linkerd-namespace={{ .Values.controller.linkerdControlPlaneNamespace }}'
-            - '--zap-log-level={{ .Values.controller.logLevel }}'
+            - '-metrics-bind-address=:8080'
+            - '-health-probe-bind-address=:8081'
+            - '-webhook-port=9443'
+            - '-leader-elect={{ .Values.controller.leaderElection }}'
+            - '-cni-namespace={{ .Values.controller.cniNamespace }}'
+            - '-cni-kubeconfig={{ .Values.controller.cniKubeconfigNodePath }}'
+            - '-linkerd-namespace={{ .Values.controller.linkerdControlPlaneNamespace }}'
+            - '-zap-log-level={{ .Values.controller.logLevel }}'
+            - '-linkerd-proxy-uid-offset={{ .Values.controller.linkerdProxyUIDOffset | toString }}'
+            - '-namespace-uid-range-annotation={{ .Values.controller.namespaceUIDRangeAnnotation }}'
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           volumeMounts:

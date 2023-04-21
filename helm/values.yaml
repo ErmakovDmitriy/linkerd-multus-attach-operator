@@ -90,5 +90,7 @@ controller:
   cniNamespace: "linkerd-cni"
   cniKubeconfigNodePath: "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig"
   linkerdControlPlaneNamespace: "linkerd"
+  namespaceUIDRangeAnnotation: "openshift.io/sa.scc.uid-range"
+  linkerdProxyUIDOffset: 2102
 
   logLevel: info

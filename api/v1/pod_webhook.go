@@ -53,8 +53,12 @@ var podCopyAnnotations = []string{
 // PodAnnotator adds Multus annotation to a Pod to attach Linkerd CNI via Multus.
 type PodAnnotator struct {
 	controlPlaneNamespace string
-	Client                client.Client
-	decoder               *admission.Decoder
+
+	namespaceAllowedUIDsAnnotation string
+	linkerdProxyUIDOffset          int
+
+	Client  client.Client
+	decoder *admission.Decoder
 }
 
 // Handle implements WebHook handler.
@@ -99,8 +103,15 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	// Mutate the fields in pod.
 	pod = patchPod(pod)
 
-	// Add optional Openshift UID annotation if not set.
-	pod = addOpenshiftProxyUID(&podlog, nsAnnotations, pod)
+	// Add optional Openshift UID annotation if not set and the
+	// allowed range is defined by a namespace.
+	// Get the first UID and assign it as the proxy UID.
+	if containerUIDRange, ok := nsAnnotations[a.namespaceAllowedUIDsAnnotation]; ok {
+		podlog.V(debugLogLevel).Info("Pod's namespace has UID range annotation",
+			a.namespaceAllowedUIDsAnnotation, containerUIDRange)
+
+		pod = addOpenshiftProxyUID(&podlog, a.namespaceAllowedUIDsAnnotation, containerUIDRange, a.linkerdProxyUIDOffset, pod)
+	}
 
 	podlog.V(debugLogLevel).Info("Patches Pod annotations",
 		k8s.MultusNetworkAttachAnnotation, pod.GetAnnotations()[k8s.MultusNetworkAttachAnnotation])
@@ -120,13 +131,15 @@ func (a *PodAnnotator) InjectDecoder(d *admission.Decoder) error {
 }
 
 // SetupWebhookWithManager attaches PodAnnotator to a provided manager.
-func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace string) {
+func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace, namespaceAllowedUIDsAnnotation string, linkerdProxyUIDOffset int) {
 	mgr.GetWebhookServer().Register(
 		"/annotate-multus-v1-pod",
 		&webhook.Admission{
 			Handler: &PodAnnotator{
-				Client:                mgr.GetClient(),
-				controlPlaneNamespace: controlPlaneNamespace,
+				Client:                         mgr.GetClient(),
+				controlPlaneNamespace:          controlPlaneNamespace,
+				namespaceAllowedUIDsAnnotation: namespaceAllowedUIDsAnnotation,
+				linkerdProxyUIDOffset:          linkerdProxyUIDOffset,
 			},
 		},
 	)
@@ -134,48 +147,40 @@ func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace string) {
 
 // Add the first allowed UID for Proxy UID based on Openshift namespace
 // annotation: openshift.io/sa.scc.uid-range={{ first ID }}/{{ pool size }}.
-func addOpenshiftProxyUID(podlog *logr.Logger, nsAnnotations map[string]string, pod *corev1.Pod) *corev1.Pod {
+func addOpenshiftProxyUID(podlog *logr.Logger, namespaceAllowedUIDsAnnotation, namespaceUIDRange string, proxyUIDOffset int, pod *corev1.Pod) *corev1.Pod {
 	// If the Pod has already configured value - leave it be.
 	if val, ok := pod.GetAnnotations()[k8s.LinkerdProxyUIDAnnotation]; ok && val != "" {
 		podlog.V(debugLogLevel).Info(
-			"Pod already has config.linkerd.io/proxy-uid annotation, not changing it",
+			"Pod already has UID range annotation, not changing it",
 			"config.linkerd.io/proxy-uid", val)
 
 		return pod
 	}
 
-	// Get the first UID and assign it as the proxy UID.
-	IDRange, ok := nsAnnotations[k8s.OpenshiftNamespaceAllowedUIDsAnnotation]
-	// No ID range, leave as is as there is no way to detect the allowed UID.
-	if !ok {
-		podlog.V(debugLogLevel).Info(
-			"Pod's namespace does not have openshift.io/sa.scc.uid-range annotation, do not change the pod")
-
-		return pod
-	}
-
-	splIDRange := strings.Split(IDRange, "/")
+	splIDRange := strings.Split(namespaceUIDRange, "/")
 	if len(splIDRange) != 2 { // The correct value is like "10000000/2000".
 		// Incorrect value. The application assumes that something
 		// uses the same namespace annotation but for other purpose
 		// and ignores it.
 		podlog.Info(
-			"Pod must be patched with proxy UID annotation but the namespace's openshift.io/sa.scc.uid-range annotation does not conform to {{ first ID }}/{{ range }} format. Ignoring the annotation",
-			"openshift.io/sa.scc.uid-range", IDRange)
+			"Pod must be patched with proxy UID annotation but the namespace's range UID annotation does not conform to {{ first ID }}/{{ range }} format. Ignoring the annotation",
+			namespaceAllowedUIDsAnnotation, namespaceUIDRange)
 
 		return pod
 	}
 
-	if _, err := strconv.Atoi(splIDRange[0]); err != nil {
-		podlog.Error(err, "Pod's namespace openshift.io/sa.scc.uid-range annotation is not correct, expected to have {{ first ID }}/{{ range }}, integers. Do not change the Pod",
-			"openshift.io/sa.scc.uid-range", IDRange)
+	uid, err := strconv.Atoi(splIDRange[0])
+	if err != nil {
+		podlog.Error(err, "Pod's namespace UID range annotation is not correct, expected to have {{ first ID }}/{{ range }}, integers. Do not change the Pod",
+			namespaceAllowedUIDsAnnotation, namespaceUIDRange)
 
 		return pod
 	}
 
-	pod.Annotations[k8s.LinkerdProxyUIDAnnotation] = splIDRange[0]
+	newUIDValue := strconv.Itoa(uid + proxyUIDOffset)
+	pod.Annotations[k8s.LinkerdProxyUIDAnnotation] = newUIDValue
 
-	podlog.V(debugLogLevel).Info("Pod is patched with", k8s.LinkerdProxyUIDAnnotation, splIDRange[0])
+	podlog.V(debugLogLevel).Info("Pod is patched with", k8s.LinkerdProxyUIDAnnotation, newUIDValue)
 
 	return pod
 }
