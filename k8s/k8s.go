@@ -1,3 +1,4 @@
+// Package k8s contains shared constants used in the operator.
 package k8s
 
 import (

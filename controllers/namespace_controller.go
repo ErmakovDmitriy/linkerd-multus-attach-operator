@@ -14,6 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package controllers defines a namespace controller
+// which watches namespace changes and, if a namespace is a
+// Linkerd control plane namespace or it has linkerd.io/multus=enabled
+// annotation, the controller creates a Network Attachment Definition for
+// Linkerd CNI plugin.
 package controllers
 
 import (

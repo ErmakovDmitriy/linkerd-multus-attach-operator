@@ -86,7 +86,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	// I am not sure that this is a good way but it is better than preserve the quotes and pass them futher.
+	// I am not sure that this is a good way but it is better than preserve the quotes and pass them further.
 	// The quotes being then embedded in the Linkerd-CNI configuration cause its failure so they must be removed.
 	cniKubeconfigFilePath := strings.Trim(rawCNIKubeconfigFilePath, `\"`)
 
