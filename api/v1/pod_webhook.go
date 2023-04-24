@@ -94,7 +94,20 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	pod = copyAnnotations(pod, nsAnnotations)
 
 	// Do nothing, if Linkerd CNI is not requested.
-	if !isMultusAnnotationRequested(pod, req.Namespace, a.controlPlaneNamespace) {
+	var (
+		needNetAttach     bool
+		isControlPlanePod bool
+	)
+
+	if isMultusAnnotationRequested(pod) {
+		needNetAttach = true
+	} else if isControlPlane(pod, req.Namespace, a.controlPlaneNamespace) {
+		// Control plane Pods must be always processed by Linkerd CNI.
+		needNetAttach = true
+		isControlPlanePod = true
+	}
+
+	if !needNetAttach {
 		podlog.V(debugLogLevel).Info("Multus NetworkAttachmentDefinition is not requested, do not patch")
 
 		return admission.Allowed("No Multus attachment requested")
@@ -104,13 +117,16 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	pod = patchPod(pod)
 
 	// Add optional Openshift UID annotation if not set and the
-	// allowed range is defined by a namespace.
+	// allowed range is defined by a namespace and NOT control plane
+	// namespace as they are special.
 	// Get the first UID and assign it as the proxy UID.
-	if containerUIDRange, ok := nsAnnotations[a.namespaceAllowedUIDsAnnotation]; ok {
-		podlog.V(debugLogLevel).Info("Pod's namespace has UID range annotation",
-			a.namespaceAllowedUIDsAnnotation, containerUIDRange)
+	if !isControlPlanePod {
+		if containerUIDRange, ok := nsAnnotations[a.namespaceAllowedUIDsAnnotation]; ok {
+			podlog.V(debugLogLevel).Info("Pod's namespace has UID range annotation",
+				a.namespaceAllowedUIDsAnnotation, containerUIDRange)
 
-		pod = addOpenshiftProxyUID(&podlog, a.namespaceAllowedUIDsAnnotation, containerUIDRange, a.linkerdProxyUIDOffset, pod)
+			pod = addOpenshiftProxyUID(&podlog, a.namespaceAllowedUIDsAnnotation, containerUIDRange, a.linkerdProxyUIDOffset, pod)
+		}
 	}
 
 	podlog.V(debugLogLevel).Info("Patches Pod annotations",
@@ -209,7 +225,7 @@ func copyAnnotations(pod *corev1.Pod, nsAnnotations map[string]string) *corev1.P
 }
 
 // isMultusAnnotationRequested checks if a Pod requires Linkerd CNI via Multus.
-func isMultusAnnotationRequested(pod *corev1.Pod, reqNamespace, controlPlaneNamespace string) bool {
+func isMultusAnnotationRequested(pod *corev1.Pod) bool {
 	// Injection is explicitly requested.
 	podAnnotations := pod.GetAnnotations()
 	ldInjectVal := podAnnotations[k8s.LinkerdInjectAnnotation]
@@ -219,6 +235,10 @@ func isMultusAnnotationRequested(pod *corev1.Pod, reqNamespace, controlPlaneName
 		return true
 	}
 
+	return false
+}
+
+func isControlPlane(pod *corev1.Pod, reqNamespace, controlPlaneNamespace string) bool {
 	// Control plane Pods must be always processed by Linkerd CNI.
 	podLabels := pod.GetLabels()
 
