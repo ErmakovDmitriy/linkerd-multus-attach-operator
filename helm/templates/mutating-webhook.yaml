@@ -30,10 +30,10 @@ webhooks:
   name: multus.linkerd.io
   # We do not need to handle the controller's namespace with its webhook.
   namespaceSelector:
-    {{- .Values.webhook.namespaceSelector | toYaml | nindent 4 }}
+    {{- tpl (.Values.webhook.namespaceSelector | toYaml ) $ | nindent 4 }}
   {{- with .Values.webhook.objectSelector }}
   objectSelector:
-    {{- . | toYaml | nindent 4 }}
+    {{- tpl (. | toYaml ) $ | nindent 4 }}
   {{- end }}
   rules:
   - apiGroups:
