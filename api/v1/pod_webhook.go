@@ -100,9 +100,12 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	)
 
 	if isMultusAnnotationRequested(pod) {
+		podlog.V(debugLogLevel).Info("Pod annotations do not request Multus NetworkAttachmentDefinition", "annotations", pod.GetAnnotations())
 		needNetAttach = true
 	} else if isControlPlane(pod, req.Namespace, a.controlPlaneNamespace) {
 		// Control plane Pods must be always processed by Linkerd CNI.
+		podlog.V(debugLogLevel).Info("Pod is a Linkerd control plane")
+
 		needNetAttach = true
 		isControlPlanePod = true
 	}
