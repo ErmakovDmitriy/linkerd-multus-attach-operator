@@ -123,7 +123,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	whapiv1.SetupWebhookWithManager(mgr, linkerdNamespace, allowedUIDAnnotationName, linkerdProxyUIDOffset)
+	whapiv1.SetupWebhookWithManager(mgr, allowedUIDAnnotationName, linkerdProxyUIDOffset)
 
 	//+kubebuilder:scaffold:builder
 

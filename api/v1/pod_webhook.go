@@ -47,8 +47,6 @@ const debugLogLevel = 1
 
 // PodAnnotator adds Multus annotation to a Pod to attach Linkerd CNI via Multus.
 type PodAnnotator struct {
-	controlPlaneNamespace string
-
 	namespaceAllowedUIDsAnnotation string
 	linkerdProxyUIDOffset          int64
 
@@ -159,13 +157,12 @@ func (a *PodAnnotator) InjectDecoder(d *admission.Decoder) error {
 }
 
 // SetupWebhookWithManager attaches PodAnnotator to a provided manager.
-func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace, namespaceAllowedUIDsAnnotation string, linkerdProxyUIDOffset int64) {
+func SetupWebhookWithManager(mgr ctrl.Manager, namespaceAllowedUIDsAnnotation string, linkerdProxyUIDOffset int64) {
 	mgr.GetWebhookServer().Register(
 		"/annotate-multus-v1-pod",
 		&webhook.Admission{
 			Handler: &PodAnnotator{
 				Client:                         mgr.GetClient(),
-				controlPlaneNamespace:          controlPlaneNamespace,
 				namespaceAllowedUIDsAnnotation: namespaceAllowedUIDsAnnotation,
 				linkerdProxyUIDOffset:          linkerdProxyUIDOffset,
 			},

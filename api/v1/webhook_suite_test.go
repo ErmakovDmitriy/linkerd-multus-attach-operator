@@ -105,7 +105,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	SetupWebhookWithManager(mgr, "linkerd", k8s.NamespaceAllowedUIDRangeAnnotationDefault, k8s.LinkerdProxyUIDDefaultOffset)
+	SetupWebhookWithManager(mgr, k8s.NamespaceAllowedUIDRangeAnnotationDefault, k8s.LinkerdProxyUIDDefaultOffset)
 
 	//+kubebuilder:scaffold:webhook
 
