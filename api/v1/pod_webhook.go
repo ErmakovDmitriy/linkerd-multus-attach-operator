@@ -100,7 +100,7 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	)
 
 	if isMultusAnnotationRequested(pod) {
-		podlog.V(debugLogLevel).Info("Pod annotations do not request Multus NetworkAttachmentDefinition", "annotations", pod.GetAnnotations())
+		podlog.V(debugLogLevel).Info("Pod annotations request Multus NetworkAttachmentDefinition", "annotations", pod.GetAnnotations())
 		needNetAttach = true
 	} else if isControlPlane(pod, req.Namespace, a.controlPlaneNamespace) {
 		// Control plane Pods must be always processed by Linkerd CNI.
@@ -108,6 +108,8 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 
 		needNetAttach = true
 		isControlPlanePod = true
+	} else {
+		podlog.V(debugLogLevel).Info("Pod annotations do not request Multus NetworkAttachmentDefinition", "annotations", pod.GetAnnotations())
 	}
 
 	if !needNetAttach {
@@ -132,12 +134,19 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 		}
 	}
 
-	podlog.V(debugLogLevel).Info("Patches Pod annotations",
-		k8s.MultusNetworkAttachAnnotation, pod.GetAnnotations()[k8s.MultusNetworkAttachAnnotation])
+	podAnnotations := pod.GetAnnotations()
+	podlog.V(debugLogLevel).Info("Patched Pod annotations",
+		k8s.MultusNetworkAttachAnnotation, podAnnotations[k8s.MultusNetworkAttachAnnotation],
+		k8s.LinkerdProxyUIDAnnotation, podAnnotations[k8s.LinkerdProxyUIDAnnotation],
+	)
 
 	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
+	}
+
+	if podlog.V(debugLogLevel).Enabled() {
+		podlog.V(debugLogLevel).Info("Patched Pod", "pod", string(marshaledPod))
 	}
 
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
