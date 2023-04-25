@@ -15,7 +15,7 @@ data:
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: {{ include "multus-attacher.fullname" . }}
+  name: zz-{{ include "multus-attacher.fullname" . }}
 webhooks:
 - admissionReviewVersions:
   - v1
