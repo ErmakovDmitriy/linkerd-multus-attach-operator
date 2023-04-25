@@ -120,10 +120,9 @@ POD_SOURCE=$(cat <<EOF
 EOF
 )
 
+echo "$SEPARATOR"
 echo "Source Pod definition:"
 echo $POD_SOURCE | jq
-
-echo "$SEPARATOR"
 echo "Check a Pod, expected to have the Multus annotation on the Pod"
 __POD_WITH_EXPECTED_ANNOTATIONS=$(echo $POD_SOURCE | kubectl apply --dry-run=server -o json -f -)
 echo "Pod with expected annotations definition:"
@@ -131,10 +130,79 @@ echo "$__POD_WITH_EXPECTED_ANNOTATIONS" | jq
 echo $__POD_WITH_EXPECTED_ANNOTATIONS | python tests/check_annotations.py must-contain
 
 echo "$SEPARATOR"
-echo "Delete the namespace's Linkerd annotation, check a Pod"
-kubectl annotate --overwrite namespace/$NAMESPACE "linkerd.io/multus-"
-sleep 1
+POD_SOURCE=$(cat <<EOF
+{
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+        "name": "test-pod",
+        "namespace": "$NAMESPACE"
+    },
+    "spec": {
+        "containers": [
+            {
+                "command": [
+                    "sleep",
+                    "3600"
+                ],
+                "image": "busybox",
+                "name": "test"
+            },
+            {
+                "command": ["start-proxy"],
+                "image": "linkerd-proxy",
+                "name": "linkerd-proxy"
+            }
+        ]
+    }
+}
+EOF
+)
 echo "Check a Pod, expected not to have the Multus annotation on the Pod"
+echo "Source Pod definition:"
+echo $POD_SOURCE | jq
+__POD_WITHOUT_EXPECTED_ANNOTATIONS=$(echo $POD_SOURCE | kubectl apply --dry-run=server -o json -f -)
+echo "Pod without expected annotations definition:"
+echo "$__POD_WITHOUT_EXPECTED_ANNOTATIONS" | jq
+echo $__POD_WITHOUT_EXPECTED_ANNOTATIONS | python tests/check_annotations.py must-not-contain
+
+echo "$SEPARATOR"
+POD_SOURCE=$(cat <<EOF
+{
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+        "name": "test-pod",
+        "namespace": "$NAMESPACE"
+    },
+    "spec": {
+        "initContainers": [
+            {
+                "command": [
+                    "sleep",
+                    "3600"
+                ],
+                "image": "busybox",
+                "name": "linkerd-network-validator"
+            }
+        ],
+        "containers": [
+            {
+                "command": [
+                    "sleep",
+                    "3600"
+                ],
+                "image": "busybox",
+                "name": "test"
+            }
+        ]
+    }
+}
+EOF
+)
+echo "Check a Pod, expected not to have the Multus annotation on the Pod"
+echo "Source Pod definition:"
+echo $POD_SOURCE | jq
 __POD_WITHOUT_EXPECTED_ANNOTATIONS=$(echo $POD_SOURCE | kubectl apply --dry-run=server -o json -f -)
 echo "Pod without expected annotations definition:"
 echo "$__POD_WITHOUT_EXPECTED_ANNOTATIONS" | jq
