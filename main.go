@@ -63,7 +63,7 @@ func main() {
 		webHookPort              int
 
 		allowedUIDAnnotationName string
-		linkerdProxyUIDOffset    int
+		linkerdProxyUIDOffset    int64
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -76,7 +76,7 @@ func main() {
 	flag.IntVar(&webHookPort, "webhook-port", 9443, "TCP port for webhook to listen on")
 	flag.StringVar(&allowedUIDAnnotationName, "namespace-uid-range-annotation",
 		k8s.NamespaceAllowedUIDRangeAnnotationDefault, "Namespace annotation name which should contain allowed container UID range in {{ first UID }}/{{ length }} format")
-	flag.IntVar(&linkerdProxyUIDOffset, "linkerd-proxy-uid-offset", k8s.LinkerdProxyUIDDefaultOffset, "Offset to add to the first allowed UID in a namespace to generate Linkerd proxy UID")
+	flag.Int64Var(&linkerdProxyUIDOffset, "linkerd-proxy-uid-offset", k8s.LinkerdProxyUIDDefaultOffset, "Offset to add to the first allowed UID in a namespace to generate Linkerd proxy UID")
 
 	opts := zap.Options{
 		Development: true,

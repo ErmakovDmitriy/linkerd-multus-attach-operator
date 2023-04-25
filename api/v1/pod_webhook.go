@@ -21,13 +21,13 @@ package v1
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	k8s "github.com/ErmakovDmitriy/linkerd-multus-attach-operator/k8s"
 	"github.com/go-logr/logr"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,11 +38,6 @@ import (
 )
 
 const debugLogLevel = 1
-
-var podCopyAnnotations = []string{
-	k8s.MultusAttachAnnotation,
-	k8s.LinkerdInjectAnnotation,
-}
 
 //nolint:lll
 //+kubebuilder:webhook:path=/annotate-multus-v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=multus.linkerd.io,admissionReviewVersions=v1
@@ -55,15 +50,16 @@ type PodAnnotator struct {
 	controlPlaneNamespace string
 
 	namespaceAllowedUIDsAnnotation string
-	linkerdProxyUIDOffset          int
+	linkerdProxyUIDOffset          int64
 
 	Client  client.Client
 	decoder *admission.Decoder
 }
 
 // Handle implements WebHook handler.
-// Checks if a Pod or its Namespace have "linkerd.io/multus" annotation and then
-// appends to "k8s.v1.cni.cncf.io/networks" annotations the linkerd-cni network.
+// Checks if a Pod has the Linkerd proxy sidecar and network-check container and
+// appends to "k8s.v1.cni.cncf.io/networks" annotations the linkerd-cni network, if they are present.
+// Changes the sidecar's and network check container's runAsUser, if UID range annotation present.
 func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	// log is for logging in this function.
 	var podlog = logf.FromContext(ctx).WithName("pod-webhook")
@@ -79,6 +75,22 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	podlog = podlog.WithValues("req_namespace", req.Namespace, "pod_generate_name", pod.GenerateName)
 	podlog.V(debugLogLevel).Info("Received request")
 
+	// Check if the Pod has Linkerd Proxy and Network Validator => needs Multus.
+	checkCntFound, checkCntInd := findLinkerdNetValidator(pod)
+	proxyCntFound, proxyCntInd := findLinkerdProxy(pod)
+
+	if !checkCntFound || !proxyCntFound {
+		podlog.V(debugLogLevel).Info("Pod data", "pod", pod)
+
+		return admission.Allowed("Pod does not have Linkerd proxy or/and Linkerd Network Validator, do not add Multus Network Attach Definition")
+	}
+
+	// Patch with Multus Network Attach Definition annotation.
+	podlog.V(debugLogLevel).Info("Annotating with Multus NetworkAttachmentDefinition")
+	pod = addMultusNetAttach(pod)
+
+	// Check if the Pod should have proxy and network validator runAsUser patched.
+
 	// Retrieve namespace annotations.
 	var namespace = &corev1.Namespace{}
 
@@ -90,66 +102,54 @@ func (a *PodAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 
 	nsAnnotations := namespace.GetAnnotations()
 
-	// Annotate Pod with Namespace annotations.
-	pod = copyAnnotations(pod, nsAnnotations)
+	nsPoolRangeRaw, ok := nsAnnotations[a.namespaceAllowedUIDsAnnotation]
+	if !ok {
+		// No allowed UIDs range - return Multus-annotated pod without changing
+		// Proxy and Network Validator UIDs.
+		podlog.V(debugLogLevel).Info("Pod's namespace does not have annotation, do not change Proxy and Network Validator SecurityContexts", "absent_annotation", a.namespaceAllowedUIDsAnnotation)
 
-	// Do nothing, if Linkerd CNI is not requested.
-	var (
-		needNetAttach     bool
-		isControlPlanePod bool
-	)
-
-	if isMultusAnnotationRequested(pod) {
-		podlog.V(debugLogLevel).Info("Pod annotations request Multus NetworkAttachmentDefinition", "annotations", pod.GetAnnotations())
-		needNetAttach = true
-	} else if isControlPlane(pod, req.Namespace, a.controlPlaneNamespace) {
-		// Control plane Pods must be always processed by Linkerd CNI.
-		podlog.V(debugLogLevel).Info("Pod is a Linkerd control plane")
-
-		needNetAttach = true
-		isControlPlanePod = true
-	} else {
-		podlog.V(debugLogLevel).Info("Pod annotations do not request Multus NetworkAttachmentDefinition", "annotations", pod.GetAnnotations())
+		return makePatch(podlog, req, pod)
 	}
 
-	if !needNetAttach {
-		podlog.V(debugLogLevel).Info("Multus NetworkAttachmentDefinition is not requested, do not patch")
-
-		return admission.Allowed("No Multus attachment requested")
+	uidStart, uidEnd, err := parseUIDRange(nsPoolRangeRaw)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	// Mutate the fields in pod.
-	pod = patchPod(pod)
+	podlog.V(debugLogLevel).Info("Allowed RunAsUser range", "start", uidStart, "end", uidEnd)
 
-	// Add optional Openshift UID annotation if not set and the
-	// allowed range is defined by a namespace and NOT control plane
-	// namespace as they are special.
-	// Get the first UID and assign it as the proxy UID.
-	if !isControlPlanePod {
-		if containerUIDRange, ok := nsAnnotations[a.namespaceAllowedUIDsAnnotation]; ok {
-			podlog.V(debugLogLevel).Info("Pod's namespace has UID range annotation",
-				a.namespaceAllowedUIDsAnnotation, containerUIDRange)
+	// Custom proxy UID is not set - annotate and set.
+	if pod.GetAnnotations()[k8s.LinkerdProxyUIDAnnotation] == "" {
+		proxyUID := uidStart + a.linkerdProxyUIDOffset
 
-			pod = addOpenshiftProxyUID(&podlog, a.namespaceAllowedUIDsAnnotation, containerUIDRange, a.linkerdProxyUIDOffset, pod)
+		if proxyUID > uidEnd {
+			return admission.Errored(http.StatusInternalServerError, fmt.Errorf("Computed proxy UID %d is not in the allowed range [%d, %d]", proxyUID, uidStart, uidEnd))
+		}
+
+		pod.GetAnnotations()[k8s.LinkerdProxyUIDAnnotation] = strconv.FormatInt(proxyUID, 10)
+		if pod.Spec.Containers[proxyCntInd].SecurityContext == nil {
+			podlog.V(debugLogLevel).Info("Proxy container does not have SecurityContext, defining a new one", "RunAsUser", proxyUID)
+			pod.Spec.Containers[proxyCntInd].SecurityContext = &corev1.SecurityContext{RunAsUser: &proxyUID}
+		} else {
+			podlog.V(debugLogLevel).Info("Proxy container does has SecurityContext, setting RunAsUser", "RunAsUser", proxyUID)
+			pod.Spec.Containers[proxyCntInd].SecurityContext.RunAsUser = &proxyUID
 		}
 	}
 
-	podAnnotations := pod.GetAnnotations()
-	podlog.V(debugLogLevel).Info("Patched Pod annotations",
-		k8s.MultusNetworkAttachAnnotation, podAnnotations[k8s.MultusNetworkAttachAnnotation],
-		k8s.LinkerdProxyUIDAnnotation, podAnnotations[k8s.LinkerdProxyUIDAnnotation],
-	)
-
-	marshaledPod, err := json.Marshal(pod)
-	if err != nil {
-		return admission.Errored(http.StatusInternalServerError, err)
+	// Network Validator container set runAsUser.
+	if pod.Spec.InitContainers[checkCntInd].SecurityContext == nil {
+		podlog.V(debugLogLevel).Info("Network Validator container does not have SecurityContext, defining a new one", "RunAsUser", uidStart)
+		pod.Spec.InitContainers[checkCntInd].SecurityContext = &corev1.SecurityContext{RunAsUser: &uidStart}
+	} else {
+		podlog.V(debugLogLevel).Info("Network Validator container has SecurityContext,  setting RunAsUser", "RunAsUser", uidStart)
+		pod.Spec.InitContainers[checkCntInd].SecurityContext.RunAsUser = &uidStart
 	}
 
 	if podlog.V(debugLogLevel).Enabled() {
-		podlog.V(debugLogLevel).Info("Patched Pod", "pod", string(marshaledPod))
+		podlog.Info("Patched Pod", "pod", pod)
 	}
 
-	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
+	return makePatch(podlog, req, pod)
 }
 
 // InjectDecoder injects provided decoder to the WebHook instance.
@@ -159,7 +159,7 @@ func (a *PodAnnotator) InjectDecoder(d *admission.Decoder) error {
 }
 
 // SetupWebhookWithManager attaches PodAnnotator to a provided manager.
-func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace, namespaceAllowedUIDsAnnotation string, linkerdProxyUIDOffset int) {
+func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace, namespaceAllowedUIDsAnnotation string, linkerdProxyUIDOffset int64) {
 	mgr.GetWebhookServer().Register(
 		"/annotate-multus-v1-pod",
 		&webhook.Admission{
@@ -173,102 +173,78 @@ func SetupWebhookWithManager(mgr ctrl.Manager, controlPlaneNamespace, namespaceA
 	)
 }
 
-// Add the first allowed UID for Proxy UID based on Openshift namespace
-// annotation: openshift.io/sa.scc.uid-range={{ first ID }}/{{ pool size }}.
-func addOpenshiftProxyUID(podlog *logr.Logger, namespaceAllowedUIDsAnnotation, namespaceUIDRange string, proxyUIDOffset int, pod *corev1.Pod) *corev1.Pod {
-	// If the Pod has already configured value - leave it be.
-	if val, ok := pod.GetAnnotations()[k8s.LinkerdProxyUIDAnnotation]; ok && val != "" {
-		podlog.V(debugLogLevel).Info(
-			"Pod already has UID range annotation, not changing it",
-			"config.linkerd.io/proxy-uid", val)
-
-		return pod
-	}
-
-	splIDRange := strings.Split(namespaceUIDRange, "/")
-	if len(splIDRange) != 2 { // The correct value is like "10000000/2000".
-		// Incorrect value. The application assumes that something
-		// uses the same namespace annotation but for other purpose
-		// and ignores it.
-		podlog.Info(
-			"Pod must be patched with proxy UID annotation but the namespace's range UID annotation does not conform to {{ first ID }}/{{ range }} format. Ignoring the annotation",
-			namespaceAllowedUIDsAnnotation, namespaceUIDRange)
-
-		return pod
-	}
-
-	uid, err := strconv.Atoi(splIDRange[0])
+func makePatch(podlog logr.Logger, req admission.Request, pod *corev1.Pod) admission.Response {
+	marshaledPod, err := json.Marshal(pod)
 	if err != nil {
-		podlog.Error(err, "Pod's namespace UID range annotation is not correct, expected to have {{ first ID }}/{{ range }}, integers. Do not change the Pod",
-			namespaceAllowedUIDsAnnotation, namespaceUIDRange)
-
-		return pod
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
-	newUIDValue := strconv.Itoa(uid + proxyUIDOffset)
-	pod.Annotations[k8s.LinkerdProxyUIDAnnotation] = newUIDValue
+	if podlog.V(debugLogLevel).Enabled() {
+		podlog.V(debugLogLevel).Info("Patched Pod", "pod", string(marshaledPod))
+	}
 
-	podlog.V(debugLogLevel).Info("Pod is patched with", k8s.LinkerdProxyUIDAnnotation, newUIDValue)
-
-	return pod
+	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
-// copyAnnotations copies podCopyAnnotations from a Pod's Namespace to the Pod.
-// Does not change the Pod's annotations, if they are defined.
-func copyAnnotations(pod *corev1.Pod, nsAnnotations map[string]string) *corev1.Pod {
-	if nsAnnotations == nil {
-		return pod
+// ErrIncorrectUIDRange - incorrect UID range annotation received.
+type ErrIncorrectUIDRange struct {
+	iErr   error
+	rawVal string
+	msg    string
+}
+
+func (e ErrIncorrectUIDRange) Error() string {
+	if e.iErr == nil {
+		return fmt.Sprintf("can not parse %q UID range: %s", e.rawVal, e.msg)
 	}
 
-	podAnnotations := pod.GetAnnotations()
-	if podAnnotations == nil {
-		podAnnotations = make(map[string]string)
+	return fmt.Sprintf("can not parse %q UID range: %s: %s", e.rawVal, e.msg, e.iErr)
+}
+
+var _ error = (*ErrIncorrectUIDRange)(nil)
+
+// parseUIDRange - parses value {{ first ID }}/{{ pool size }} to extract start and end UIDs.
+func parseUIDRange(namespaceUIDRange string) (start int64, end int64, _ error) {
+	splIDRange := strings.Split(namespaceUIDRange, "/")
+	if len(splIDRange) != 2 { // The correct value is like "10000000/2000".
+		return -1, -1, ErrIncorrectUIDRange{rawVal: namespaceUIDRange, iErr: nil, msg: "The value is not in {{ first ID }}/{{ pool size }} format"}
 	}
 
-	for _, key := range podCopyAnnotations {
-		if val := podAnnotations[key]; val == "" {
-			podAnnotations[key] = nsAnnotations[key]
+	start, err := strconv.ParseInt(splIDRange[0], 10, 64)
+	if err != nil {
+		return -1, -1, ErrIncorrectUIDRange{rawVal: namespaceUIDRange, iErr: err, msg: "first UID is not a correct integer"}
+	}
+
+	poolSize, err := strconv.ParseInt(splIDRange[1], 10, 64)
+	if err != nil {
+		return -1, -1, ErrIncorrectUIDRange{rawVal: namespaceUIDRange, iErr: err, msg: "UID range pool size is not a correct integer"}
+	}
+
+	return start, start + poolSize, nil
+}
+
+func findLinkerdProxy(pod *corev1.Pod) (found bool, index int) {
+	for cntI := range pod.Spec.Containers {
+		if pod.Spec.Containers[cntI].Name == k8s.LinkerdProxyContainerName {
+			return true, cntI
 		}
 	}
 
-	pod.Annotations = podAnnotations
-
-	return pod
+	return false, -1
 }
 
-// isMultusAnnotationRequested checks if a Pod requires Linkerd CNI via Multus.
-func isMultusAnnotationRequested(pod *corev1.Pod) bool {
-	// Injection is explicitly requested.
-	podAnnotations := pod.GetAnnotations()
-	ldInjectVal := podAnnotations[k8s.LinkerdInjectAnnotation]
-
-	if podAnnotations[k8s.MultusAttachAnnotation] == k8s.MultusAttachEnabled &&
-		(ldInjectVal == pkgK8s.ProxyInjectEnabled || ldInjectVal == pkgK8s.ProxyInjectIngress) {
-		return true
+func findLinkerdNetValidator(pod *corev1.Pod) (found bool, index int) {
+	for cntI := range pod.Spec.InitContainers {
+		if pod.Spec.InitContainers[cntI].Name == k8s.LinkerdNetworkValidatorContainerName {
+			return true, cntI
+		}
 	}
 
-	return false
+	return false, -1
 }
 
-func isControlPlane(pod *corev1.Pod, reqNamespace, controlPlaneNamespace string) bool {
-	// Control plane Pods must be always processed by Linkerd CNI.
-	podLabels := pod.GetLabels()
-
-	// Does not have "control-plane" labels.
-	if podLabels == nil {
-		return false
-	}
-
-	if reqNamespace == controlPlaneNamespace &&
-		podLabels[pkgK8s.ControllerComponentLabel] != "" {
-		return true
-	}
-
-	return false
-}
-
-// patchPod adds Linkerd CNI to a Pod's "k8s.v1.cni.cncf.io/networks" annotation.
-func patchPod(pod *corev1.Pod) *corev1.Pod {
+// addMultusNetAttach adds Linkerd CNI to a Pod's "k8s.v1.cni.cncf.io/networks" annotation.
+func addMultusNetAttach(pod *corev1.Pod) *corev1.Pod {
 	podAnnotations := pod.GetAnnotations()
 
 	val, ok := podAnnotations[k8s.MultusNetworkAttachAnnotation]

@@ -64,4 +64,9 @@ const (
 	// it is expected that the UID range allows the proxy UID,
 	// if not, the LinkerdProxyUIDDefaultOffset should be set to lower value.
 	LinkerdProxyUIDDefaultOffset = 2102
+
+	// LinkerdProxyContainerName - name of Linkerd Proxy injected container.
+	LinkerdProxyContainerName = "linkerd-proxy"
+	// LinkerdNetworkValidatorContainerName - name of Linkerd Network Validator injected container.
+	LinkerdNetworkValidatorContainerName = "linkerd-network-validator"
 )
