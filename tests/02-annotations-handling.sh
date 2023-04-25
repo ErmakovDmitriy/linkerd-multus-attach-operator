@@ -90,6 +90,16 @@ POD_SOURCE=$(cat <<EOF
         "namespace": "$NAMESPACE"
     },
     "spec": {
+        "initContainers": [
+            {
+                "command": [
+                    "sleep",
+                    "3600"
+                ],
+                "image": "busybox",
+                "name": "linkerd-network-validator"
+            }
+        ],
         "containers": [
             {
                 "command": [
@@ -98,6 +108,11 @@ POD_SOURCE=$(cat <<EOF
                 ],
                 "image": "busybox",
                 "name": "test"
+            },
+            {
+                "command": ["start-proxy"],
+                "image": "linkerd-proxy",
+                "name": "linkerd-proxy"
             }
         ]
     }
